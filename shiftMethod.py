@@ -1,6 +1,7 @@
 import numpy as np
 from MGCMTStencilMaker import MGCMTStencilMaker
 from MGCMTSolver import MGCMTSolver
+from MGCMTProcessor import MGCMTProcessor
 import scipy.sparse.linalg as sparsela
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ import time
 
 solver = MGCMTSolver()
 stencil_maker = MGCMTStencilMaker()
+processor = MGCMTProcessor()
 
 gridsize = 2**8
 laplacian = stencil_maker.laplacian(gridsize)
@@ -72,7 +74,7 @@ w0 = np.zeros((gridsize, 1))
 
 
 for i in xrange(num_eigenvalues):
-    v0 = solver.interpolate(bad_eigenvectors[:, i], stencil_maker, gridsize)  # Interpolate eigenvector guess to fine grid
+    v0 = processor.interpolate(bad_eigenvectors[:, i], stencil_maker, gridsize)  # Interpolate eigenvector guess to fine grid
     v0 /= np.linalg.norm(v0)
     shifted_matrix = hamiltonian - sparse.eye(gridsize) * bad_eigenvalues[i]  # Create the shifted matrix A-mu*I
 
@@ -80,12 +82,13 @@ for i in xrange(num_eigenvalues):
 
     for j in xrange(4):
         #w = solver.vcycle(w0, v, hamiltonian, stencil_maker, shift=bad_eigenvalues[i])
-        w=w0
+        w = w0
         for k in xrange(5):
-            w = solver.vcycle(w, v, hamiltonian, stencil_maker, shift=bad_eigenvalues[i])
+            w = solver.vcycle(w, v, hamiltonian, stencil_maker, shift=bad_eigenvalues[i], lowest_level=16)
 
             #w = solver.twogrid(w, v, hamiltonian, stencil_maker, shift=bad_eigenvalues[i])
-            print j, np.linalg.norm(hamiltonian.dot(w)-bad_eigenvalues[i]*w - v)
+            #print j, np.linalg.norm(hamiltonian.dot(w)-bad_eigenvalues[i]*w - v)
+            print j, np.linalg.norm(v - shifted_matrix * w, ord=np.inf)
 
         #w = solver.wjacobi(w0, v, shifted_matrix)
         v = w / np.linalg.norm(w)
